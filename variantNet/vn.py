@@ -127,5 +127,5 @@ class VariantNet(object):
             return bases_, type_
 
     def __del__(self):
-        self.close()
+        self.session.close()
 
