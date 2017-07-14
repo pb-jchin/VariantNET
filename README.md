@@ -1,7 +1,3 @@
-
-VariantNET
-===============================
-
 In this repository, we demostrate using a simple convolution neural network (implented 
 with Tensorflow) for variant calling.  This is sepecially useful for DNA sequences with 
 many insertion and deletion errors (e.g. from the single molecule DNA sequencing with 
@@ -14,7 +10,7 @@ With the singal level information and a better alignment model, it is possible t
 improve the performance.
 
 
-## VariantNet
+## VariantNET
 
 VariantNet is a small neural network that makes variant calls from aggregated alignment information. Unlike DeepVariant (http://www.biorxiv.org/content/early/2016/12/14/092890), we don't construct pile-up images and send the images to Google's DistBelief for computation. Instead, the alignments in a BAM file are converted to three 15 by 4 matrices for training the network and calling variants.  
 
