@@ -15,6 +15,7 @@ def get_aln_array( aln_tensor_fn ):
             row = row.strip().split()
             pos = int(row[0])
             ref_seq = row[1]
+            ref_seq = ref_seq.upper()
 
             if ref_seq[7] not in ["A","C","G","T"]:
                 continue
