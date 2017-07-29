@@ -11,4 +11,7 @@ for row in sys.stdin:
     p1 = int(p1)
     p2 = int(p2)
     p1, p2 = (p1, p2) if p1 < p2 else (p2, p1)
-    print row[1], row[3], row[4], p1, p2
+    if len(row[3]) != len(row[4]):  #indel case, we need to shift one base 
+        print int(row[1]) + 1, row[3], row[4], p1, p2
+    else:
+        print row[1], row[3], row[4], p1, p2

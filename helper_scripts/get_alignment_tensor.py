@@ -24,14 +24,18 @@ def generate_aln_count_tensor(alns, center, ref_seq):
     aln_code = np.zeros( (15, 3, 4) )
     for aln in alns:
         for rp, qp, rb, qb in aln:
-            if rb not in ("A","C","G","T"):
+            if qb not in ("A","C","G","T","-"):
                 continue
-            if rp - center >= -8 and rp - center < 7 and qb != "-":
+            rb = rb.upper()
+            if rb not in ("A","C","G","T","-"):
+                continue
+            if rp - center >= -8 and rp - center < 7:
                 offset = rp - center + 8
                 if rb != "-":
                     aln_code[offset][0][ base2num[rb] ] += 1
-                    aln_code[offset][1][ base2num[qb] ] += 1
-                    aln_code[offset][2][ base2num[qb] ] += 1
+                    if qb != "-":
+                        aln_code[offset][1][ base2num[qb] ] += 1
+                        aln_code[offset][2][ base2num[qb] ] += 1
                 else:
                     aln_code[offset][1][ base2num[qb] ] += 1
     output_line = []
@@ -79,6 +83,8 @@ def output_aln_tensor(args):
 
         QNAME = l[0]
         FLAG = int(l[1])
+        if FLAG != 0 and FLAG != 16:
+            continue
         RNAME = l[2]
         POS = int(l[3]) - 1 #make it zero base to match sequence index
         CIGAR = l[5]
@@ -116,9 +122,11 @@ def output_aln_tensor(args):
                     qp += 1
 
             elif m.group(2) == "I":
-                for i in range(adv):
-                    for center in list(active_set):
-                        center_to_aln[center][-1].append( (rp, qp, "-", SEQ[qp] ))
+                for i in xrange(adv):
+                    if i < 4: #  ignore extra bases if the insert is too long
+                        for center in list(active_set):
+                            center_to_aln[center][-1].append( (rp, qp, "-", SEQ[qp] ))
+
                     qp += 1
 
             elif m.group(2) == "D":

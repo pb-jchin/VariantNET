@@ -17,11 +17,16 @@ def output_count(pos, base_count, ref_base, min_cov, th):
     if total_count < min_cov:
         return None
 
+
+
     base_count.sort(key = lambda x:-x[1])
     p0 = 1.0 *  base_count[0][1] / total_count
     p1 = 1.0 *  base_count[1][1] / total_count
     output_line = []
     if (p0 < 1.0 - th and p1 > th) or base_count[0][0] != ref_base:
+        if base_count[1][0] == "I" or base_count[1][0] == "D":
+            if p1 < 0.25: # hard-coded rule for indel for now, 0.25 is choosen for balance recall and PPV
+                return None
         output_line = [pos+1, ref_base, total_count]
         output_line.extend( ["%s %d" % x for x in base_count] )
         output_line = " ".join([str(c) for c in output_line])
@@ -68,6 +73,8 @@ def make_variant_candidates( args ):
             continue
 
         FLAG = int(l[1])
+        if FLAG != 0 and FLAG != 16:
+            continue
         POS = int(l[3]) - 1 #make it zero base to match sequence index 
         CIGAR = l[5]
         SEQ = l[9]
@@ -99,13 +106,20 @@ def make_variant_candidates( args ):
                     rp += 1
                     qp += 1
                 for pos, b in matches:
-                    pileup.setdefault(pos, {"A":0, "C":0, "G":0, "T":0})
+                    pileup.setdefault(pos, {"A":0, "C":0, "G":0, "T":0, "I":0, "D":0})
+                    if b not in ["A","C","G","T"]:
+                        continue
                     pileup[pos][b] += 1
             elif m.group(2) == "I":
-                for i in range(adv):
+                pileup.setdefault(rp, {"A":0, "C":0, "G":0, "T":0, "I":0, "D":0})
+                pileup[rp]["I"] += 1
+                for i in xrange(adv):
                     qp += 1
             elif m.group(2) == "D":
-                for i in range(adv):
+                for i in xrange(adv):
+                    if adv < 3: # ignore large deletions with mostly caused be SVs
+                        pileup.setdefault(rp, {"A":0, "C":0, "G":0, "T":0, "I":0, "D":0})
+                        pileup[rp]["D"] += 1 
                     rp += 1
 
         pos_k = pileup.keys()
@@ -115,7 +129,7 @@ def make_variant_candidates( args ):
         for pos in pos_k:
             if pos < POS:  # output pileup informaiton before POS which is the current head of the ref 
                 base_count = pileup[pos].items()
-                ref_base = ref_seq[pos]
+                ref_base = ref_seq[pos].upper()
                 out = output_count(pos, base_count, ref_base, min_cov, th)
                 if out != None:
                     total_count, out_line = out
@@ -129,7 +143,7 @@ def make_variant_candidates( args ):
     pos_k.sort()
     for pos in pos_k:
         base_count = pileup[pos].items()
-        ref_base = ref_seq[pos]
+        ref_base = ref_seq[pos].upper()
         out = output_count(pos, base_count, ref_base, min_cov, th)
         if out != None:
             total_count, out_line = out

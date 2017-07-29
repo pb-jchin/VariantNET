@@ -65,35 +65,81 @@ def get_training_array( aln_tensor_fn, variant_set_fn, mask_bed_fn ):
             pos = int(row[0])
             if len(tree.search(pos)) == 0:
                 continue
-            base_vec = [0,0,0,0,0,0,0,0]  #first 4, base vec, last 4, het, hom, non-variant, not-SNPs
-            if het:
-                base_vec[base2num[row[1][0]]] = 0.5
-                base_vec[base2num[row[2][0]]] = 0.5
-                base_vec[4] = 1.
-            else:
-                base_vec[base2num[row[2][0]]] = 1
-                base_vec[5] = 1.
 
-            if len(row[1]) > 1 or len(row[2]) > 1 :  # not simple SNP case
-                base_vec[7] = 1.
-                base_vec[4] = 0.
-                base_vec[5] = 0.
+            # 0-4,  ref base
+            # 4-9,  call base (A, C, G, T, Del)
+            # 9-12, het, hom
+            # type, SNP, del, ins, none, other
+
+            base_vec = [0,0,0,0,
+                        0,0,0,0,0,
+                        0,0,
+                        0,0,0,0,0,0] 
+
+            if len(row[1]) == 1 and len(row[2]) == 1:
+                base_vec[base2num[row[1][0]]] = 1 
+                base_vec[4 + base2num[row[2][0]]] = 1
+                if het:
+                    base_vec[9] = 1.
+                    base_vec[11] = 1.
+                else:
+                    base_vec[10] = 1.
+                    base_vec[11] = 1.
+
+            elif len(row[1]) > 1 or len(row[2]) > 1 :  # not simple SNP case
+                if len(row[1]) == 2 and len(row[2]) == 1: # simple deletion
+                    base_vec[base2num[row[1][1]]] = 1 
+                    base_vec[8] = 1
+                    if het:
+                        base_vec[9] = 1.
+                        base_vec[12] = 1.
+                    else:
+                        base_vec[10] = 1.
+                        base_vec[12] = 1.
+                elif len(row[1]) == 1 and len(row[2]) == 2: # simple insertion
+                    base_vec[base2num[row[1][0]]] = 1 
+                    base_vec[4 + base2num[row[2][1]]] = 1
+                    if het:
+                        base_vec[9] = 1.
+                        base_vec[13] = 1.
+                    else:
+                        base_vec[10] = 1.
+                        base_vec[13] = 1.
+                else: # complicated insertions and deletions
+                    base_vec[base2num[row[1][0]]] = 1 
+                    base_vec[8] = 1
+                    if het:
+                        base_vec[9] = 1.
+                        if len(row[1]) > len(row[2]):
+                            base_vec[15] = 1.
+                        else:
+                            base_vec[16] = 1.
+                    else:
+                        base_vec[10] = 1.
+                        if len(row[1]) < len(row[2]):
+                            base_vec[16] = 1.
+                        else:
+                            base_vec[15] = 1.
         
             Y_intitial[pos] = base_vec
-            
+    """ # if two SNPs are nearby, call the variant as "other" kind, comment out this for now 
     Y_pos = sorted(Y_intitial.keys())
     cpos = Y_pos[0]
     for pos in Y_pos[1:]:
         if abs(pos - cpos) < 12:
-            Y_intitial[pos][7] = 1
-            Y_intitial[cpos][7] = 1
+            Y_intitial[pos][15] = 1
+            Y_intitial[cpos][15] = 1
             
-            Y_intitial[pos][4] = 0
-            Y_intitial[cpos][4] = 0
-            Y_intitial[pos][5] = 0
-            Y_intitial[cpos][5] = 0
+            Y_intitial[pos][11] = 0
+            Y_intitial[cpos][11] = 0
+            Y_intitial[pos][12] = 0
+            Y_intitial[cpos][12] = 0
+            Y_intitial[pos][13] = 0
+            Y_intitial[cpos][13] = 0
+            Y_intitial[pos][14] = 0
+            Y_intitial[cpos][14] = 0
         cpos = pos
-
+    """
     X_intitial = {}  
 
     with open( aln_tensor_fn ) as f:
@@ -116,11 +162,17 @@ def get_training_array( aln_tensor_fn, variant_set_fn, mask_bed_fn ):
 
             
             X_intitial[pos] = vec
-            
             if pos not in Y_intitial:
-                base_vec = [0,0,0,0,0,0,0,0]
-                base_vec[base2num[ref_seq[7]]] = 1
-                base_vec[6] = 1.
+                # base_vec = [0,0,0,0,0,0,0,0]
+                base_vec = [0,0,0,0,
+                            0,0,0,0,0,
+                            0,0,
+                            0,0,0,0,0,0] 
+                base_vec[base2num[ref_seq[7]]] = 1 
+                base_vec[4 + base2num[ref_seq[7]]] = 1
+                base_vec[10] = 1.
+                base_vec[14] = 1.
+                
                 Y_intitial[pos] = base_vec
                 
     all_pos = sorted(X_intitial.keys())
